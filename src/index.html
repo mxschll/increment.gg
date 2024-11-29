@@ -1,0 +1,39 @@
+<!doctype html>
+<html class="antialiased bg-bg">
+    <head>
+        <title>Increment.gg</title>
+        <link rel="stylesheet" href="css/styles.css" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    </head>
+
+    <body class="text-fg bg-bg max-w-2xl m-auto font-mono">
+        <div class="p-6 pt-3 md:pt-6 min-h-screen">
+            <header class="flex mb-5 md:mb-10 items-center">
+                <span class="text-md md:text-lg whitespace-nowrap font-bold">
+                    <span class="cursor-default pr-2">increment.gg</span>
+                </span>
+                <nav
+                    class="text-xs grow justify-end items-center flex gap-1 md:gap-3"
+                >
+                    <a
+                        class="inline-flex hover:bg-gray-200 dark:hover:bg-[#313131] active:bg-gray-300 dark:active:bg-[#242424] rounded-sm p-2 transition-[background-color]"
+                        href="/about"
+                        >About
+                    </a>
+                </nav>
+            </header>
+
+            <h2 class="mb-4"><b>Public Counters</b></h2>
+            <main class="max-w-2xl font-mono m-auto mb-10 text-sm">
+                <header class="text-gray-600 flex items-center text-xs">
+                    <span class="grow">name</span
+                    ><button class="h-9 pl-4">counts</button>
+                </header>
+                <ul id="counters"></ul>
+            </main>
+        </div>
+    </body>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script src="js/client.js"></script>
+</html>
