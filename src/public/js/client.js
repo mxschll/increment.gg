@@ -17,7 +17,7 @@ function addCounterItem(id, name, value, created_at) {
 
   const outer_span = document.createElement("span");
   outer_span.className =
-    "flex transition-[background-color] hover:bg-[#242424] active:bg-[#222] border-y border-[#313131] border-b-0";
+    "flex transition-[background-color] hover_bg-[#242424] active:_bg-[#222] border-y border-[#313131] border-b-0";
   li.appendChild(outer_span);
 
   const outer_span2 = document.createElement("span");
@@ -26,7 +26,7 @@ function addCounterItem(id, name, value, created_at) {
 
   const span_created_at = document.createElement("span");
   span_created_at.className =
-    "w-32 inline-block self-start shrink-0 text-gray-500";
+    "w-32 inline-block self-start shrink1 text-gray-500";
   span_created_at.textContent = created_at;
   outer_span2.appendChild(span_created_at);
 
@@ -50,19 +50,6 @@ function addCounterItem(id, name, value, created_at) {
   counters_list.appendChild(li);
 }
 
-fetch("/counters")
-  .then((res) => res.json())
-  .then((counters) => {
-    counters.forEach((counter) => {
-      addCounterItem(
-        counter.id,
-        counter.name,
-        counter.value,
-        counter.created_at,
-      );
-    });
-  });
-
 socket.emit("subscribe", "public");
 socket.on("update", (counter) => {
   const li = document.getElementById(counter.id);
@@ -76,4 +63,13 @@ socket.on("update", (counter) => {
 // Listen for new counters
 socket.on("new", (counter) => {
   addCounterItem(counter.id, counter.name, counter.value, counter.created_at);
+});
+
+// Foreach button, add an event listener
+document.querySelectorAll("button").forEach((button) => {
+  button.addEventListener("click", (event) => {
+    const id = event.currentTarget.getAttribute("data-id");
+    console.log("Incrementing counter with id:", id);
+    incr(id);
+  });
 });

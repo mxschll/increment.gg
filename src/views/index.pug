@@ -1,0 +1,26 @@
+extends layout
+
+block content
+
+    h2.mb-4
+        b Public Counters
+
+    main.max-w-2xl.font-mono.m-auto.mb-10.text-sm
+        header.text-gray-600.flex.items-center.text-xs
+            span.grow name
+            button.h-9.pl-4 counts
+        ul#counters
+
+            each counter in counters
+                li(id=counter.id)
+                    span(class='flex transition-[background-color] hover_bg-[#242424] active:_bg-[#222] border-y border-[#313131] border-b-0')
+                        span(class='py-3 flex grow items-center')
+                            span(class='w-32 inline-block self-start shrink-0 text-gray-500')= counter.created_at
+                            span(class='grow text-gray-100')= counter.name
+
+                            button(class='flex items-center')(data-id=counter.id)
+                                span(class='value')= counter.value
+                                span= '++'
+
+    script(src="/socket.io/socket.io.js")
+    script(src="js/client.js")

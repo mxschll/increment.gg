@@ -10,6 +10,28 @@ const { Server } = require("socket.io");
 const io = new Server(server);
 
 const minify = require("express-minify");
+const ratelimit = require("express-rate-limit");
+const slowdown = require("express-slow-down");
+
+const rate_limiter = ratelimit({
+  windowMs: 1 * 60 * 1000,
+  limit: 120,
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+const speed_limiter = slowdown({
+  windowMs: 5 * 60 * 1000,
+  delayAfter: 120 * 5,
+  delayMs: (hits) => hits * 200,
+  maxDelayMs: 5000,
+});
+
+app.use(speed_limiter);
+app.use(rate_limiter);
+
+app.set("views", path.join(__dirname, "views"));
+app.set("view engine", "pug");
 
 app.use(minify());
 app.use(express.json());
@@ -50,7 +72,20 @@ db.serialize(() => {
 });
 
 app.get("/", (req, res) => {
-  res.sendFile(path.join(__dirname, "index.html"));
+  // HN ranking algo
+  const orderClause =
+    "ORDER BY value / POWER((strftime('%s', 'now') - strftime('%s', created_at)), 1.7) DESC";
+
+  db.all(
+    `SELECT id, name, value, DATE(created_at) as created_at FROM counters WHERE public = 1 ${orderClause}`,
+    (err, rows) => {
+      if (err) {
+        res.status(500).json({ error: err.message });
+        return;
+      }
+      res.render("index", { counters: rows });
+    },
+  );
 });
 
 // Returns a bearer token for the user
@@ -144,14 +179,9 @@ app.post("/counters/:id/share", (req, res) => {
 
 // Return public counters
 app.get("/counters", (req, res) => {
-  const orderBy = req.query.orderBy;
-  let orderClause = "";
-
-  if (orderBy === "value") {
-    orderClause = "ORDER BY value";
-  } else if (orderBy === "name") {
-    orderClause = "ORDER BY name";
-  }
+  // HN ranking algo
+  const orderClause =
+    "ORDER BY value / POWER((strftime('%s', 'now') - strftime('%s', created_at)), 1.7) DESC";
 
   db.all(
     `SELECT id, name, value, DATE(created_at) as created_at FROM counters WHERE public = 1 ${orderClause}`,
