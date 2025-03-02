@@ -703,10 +703,6 @@ video {
   font-size: 0.875rem;
   line-height: 1.25rem;
 }
-.text-xs{
-  font-size: 0.75rem;
-  line-height: 1rem;
-}
 .font-bold{
   font-weight: 700;
 }
@@ -748,26 +744,18 @@ video {
 .duration-300{
   transition-duration: 300ms;
 }
-
-html {
-    font-size: 18px;
-}
-
 .hover_bg-\[\#242424\]:hover{
   --tw-bg-opacity: 1;
   background-color: rgb(36 36 36 / var(--tw-bg-opacity, 1));
 }
-
 .hover_bg-\[\#313131\]:hover{
   --tw-bg-opacity: 1;
   background-color: rgb(49 49 49 / var(--tw-bg-opacity, 1));
 }
-
 .active_bg-\[\#242424\]:active{
   --tw-bg-opacity: 1;
   background-color: rgb(36 36 36 / var(--tw-bg-opacity, 1));
 }
-
 @media (min-width: 768px){
   .md_mb-10{
     margin-bottom: 2.5rem;

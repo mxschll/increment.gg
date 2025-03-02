@@ -13,10 +13,9 @@ html.antialiased.bg-bgH
         header.flex.mb-5.md_mb-10.items-center
             span.text-md.md_text-lg.whitespace-nowrap.font-bold
                 a.pr-2(href="/") increment.gg
-            nav.text-xs.grow.justify-end.items-center.flex.gap-1.md_gap-3
-                a(class=`inline-flex hover_bg-[#313131] active_bg-[#242424] rounded-sm p-2 transition-[background-color] ${currentPath === '/' ? 'bg-[#313131]' : ''}`)(href="/") Public
-                a(class=`inline-flex hover_bg-[#313131] active_bg-[#242424] rounded-sm p-2 transition-[background-color] ${currentPath === '/private' ? 'bg-[#313131]' : ''}`)(href="/private") Private
-                a(class=`inline-flex hover_bg-[#313131] active_bg-[#242424] rounded-sm p-2 transition-[background-color] ${currentPath === '/about' ? 'bg-[#313131]' : ''}`)(href="/about") About
+            nav.text-sm.grow.justify-end.items-center.flex.gap-1.md_gap-3
+                a(class=`inline-flex hover_bg-[#313131] active_bg-[#242424] rounded-sm p-2 transition-[background-color] ${currentPath === '/' ? 'bg-[#313131]' : ''}`)(href="/") public
+                a(class=`inline-flex hover_bg-[#313131] active_bg-[#242424] rounded-sm p-2 transition-[background-color] ${currentPath === '/private' ? 'bg-[#313131]' : ''}`)(href="/private") private
 
         block content
 

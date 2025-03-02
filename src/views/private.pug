@@ -3,8 +3,8 @@ extends layout
 block content
 
     h2.mb-4.flex.items-center.justify-between
-        b Private Counters
-        button#openCounterModalBtn.bg-blue-600.py-2.rounded.text-xs.hover_bg-blue-700.transition-colors(onclick="counterModal.open()" type="button") Create Counter
+        b Your Counters
+        button#openCounterModalBtn.bg-blue-600.py-2(onclick="counterModal.open()" type="button") + new counter
 
-    main.max-w-2xl.font-mono.m-auto.mb-10.text-sm
+    main.max-w-2xl.font-mono.m-auto.mb-10
         include counters
