@@ -1,18 +1,12 @@
-*.db
-*.env
-/dist
-/node_modules
-
 # Node modules
 node_modules/
 
+# Git files
+.git/
+.gitignore
+
 # Environment variables
 .env
-
-# Build files
-src/public/dist/
-dist/
-mix-manifest.json
 
 # Logs
 logs/
@@ -28,3 +22,8 @@ npm-debug.log*
 # OS files
 .DS_Store
 Thumbs.db
+
+# Docker files
+Dockerfile
+docker-compose.yml
+.dockerignore 

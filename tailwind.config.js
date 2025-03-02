@@ -41,6 +41,9 @@ module.exports = {
         gray: "#a89984",
         gray2: "#928374",
       },
+      fontFamily: {
+        mono: ["IBM Plex Mono", "monospace"],
+      },
     },
   },
   plugins: [],
