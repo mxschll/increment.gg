@@ -12,7 +12,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const publicToggle = document.getElementById('publicToggle');
   const privateLabel = document.getElementById('privateLabel');
   const publicLabel = document.getElementById('publicLabel');
-  const cancelBtn = document.getElementById('cancelCounterBtn');
+  const cancelBtn = document.getElementById('closeCreateModalBtn');
   const createBtn = document.getElementById('createCounterBtn');
   
   // Function to open the modal

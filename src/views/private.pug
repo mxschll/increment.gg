@@ -4,7 +4,6 @@ block content
 
     h2.mb-4.flex.items-center.justify-between
         b Your Counters
-        button#openCounterModalBtn.bg-blue-600.py-2(onclick="counterModal.open()" type="button") + new counter
+        button(id="openCounterModalBtn" class="py-2 inline-flex items-center gap-2 whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible_outline-none focus-visible_ring-2 focus-visible_ring-ring focus-visible_ring-offset-2 disabled_pointer-events-none disabled_opacity-50 [&_svg]_pointer-events-none [&_svg]_size-4 [&_svg]_shrink-0 border h-10 px-4 py-2 justify-start text-amber-800 bg-white hover_bg-amber-100 hover_text-amber-900 border-amber-200 hover_border-amber-300" onclick="counterModal.open()" type="button") + new counter
 
-    main.max-w-2xl.font-mono.m-auto.mb-10
-        include counters
+    include counters

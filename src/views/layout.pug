@@ -1,6 +1,6 @@
 doctype html
 
-html.antialiased.bg-bgH
+html.antialiased.background
 
     head
         title Increment.gg
@@ -9,14 +9,16 @@ html.antialiased.bg-bgH
         script(src="/socket.io/socket.io.js")
         script(src="/dist/app.js" defer)
 
-    body.text-fg.bg-bgH.max-w-2xl.m-auto.font-mono.p-6.pt-3.md_pt-6.min-h-screen
+    body.text-amber-900.bg-amber-50.max-w-2xl.m-auto.font-mono.p-6.pt-3.md_pt-6.min-h-screen
         header.flex.mb-5.md_mb-10.items-center
             span.text-md.md_text-lg.whitespace-nowrap.font-bold
                 a.pr-2(href="/") increment.gg
             nav.text-sm.grow.justify-end.items-center.flex.gap-1.md_gap-3
-                a(class=`inline-flex hover_bg-[#313131] active_bg-[#242424] rounded-sm p-2 transition-[background-color] ${currentPath === '/' ? 'bg-[#313131]' : ''}`)(href="/") public
-                a(class=`inline-flex hover_bg-[#313131] active_bg-[#242424] rounded-sm p-2 transition-[background-color] ${currentPath === '/private' ? 'bg-[#313131]' : ''}`)(href="/private") private
+                a(href="/" class=`border border-amber-200 hover:border-amber-300 px-3 py-2 text-sm font-medium rounded-md transition-colors text-amber-600 hover:text-amber-900 hover:bg-amber-50 ${path === '/' ? 'bg-amber-100 text-amber-900' : ''}`) public
+                a(href="/private" class=`border border-amber-200 hover:border-amber-300 px-3 py-2 text-sm font-medium rounded-md transition-colors text-amber-600 hover:text-amber-900 hover:bg-amber-50 ${path === '/private' ? 'bg-amber-100 text-amber-900' : ''}`) private
 
-        block content
+
+        main.max-w-2xl.font-mono.m-auto.mb-10.bg-white.p-4.rounded-lg.max-w-md.mx-auto.bg-white.rounded-xl.shadow-md.overflow-hidden.md_max-w-2xl
+            block content
 
         include modals.pug

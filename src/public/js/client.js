@@ -114,17 +114,34 @@
         })
         .then(data => {
           const counters = data.counters || data;
-
-          // Clear existing counters
-          counters_list.innerHTML = '';
+          
+          // If the list only contains an error/status message, clear it
+          if (counters_list.children.length === 1 && 
+              counters_list.children[0].classList.contains('text-yellow-400') || 
+              counters_list.children[0].classList.contains('text-red-400')) {
+            counters_list.innerHTML = '';
+          }
 
           counters.forEach(counter => {
-            addCounterItem(counter.id, counter.name, counter.value);
+            const existingCounter = document.getElementById(counter.id);
+            if (existingCounter) {
+              // Update existing counter value
+              const valueSpan = existingCounter.querySelector(".value");
+              if (valueSpan) {
+                valueSpan.textContent = ` ${counter.value}`;
+              }
+            } else {
+              // Add new counter to the list
+              addCounterItem(counter.id, counter.name, counter.value);
+            }
           });
         })
         .catch(error => {
           console.error('Error fetching counters:', error);
-          counters_list.innerHTML = '<li class="py-3 text-red-400">Failed to load counters. Please check your authentication.</li>';
+          // Only show error if list is empty
+          if (!counters_list.children.length) {
+            counters_list.innerHTML = '<li class="py-3 text-red-400">Failed to load counters. Please check your authentication.</li>';
+          }
         });
     }
   }
@@ -174,7 +191,7 @@
   // Socket connection event handlers
   socket.on('connect', () => {
     console.log('Socket connected');
-    statusIndicator.className = 'fixed top-2 right-2 p-2 rounded-full bg-green-600 transition-all duration-300';
+    statusIndicator.className = 'fixed top-2 right-2 p-2 rounded-full transition-all duration-300 text-green-600';
     statusIndicator.textContent = '●';
     statusIndicator.classList.remove('hidden', 'opacity-0');
 
@@ -201,28 +218,28 @@
 
   socket.on('connect_error', (error) => {
     console.error('Socket connection error:', error);
-    statusIndicator.className = 'fixed top-2 right-2 p-2 rounded-full bg-red-600 transition-all duration-300';
+    statusIndicator.className = 'fixed top-2 right-2 p-2 rounded-full text-red-600 transition-all duration-300';
     statusIndicator.textContent = '●';
     statusIndicator.classList.remove('hidden', 'opacity-0');
   });
 
   socket.on('disconnect', (reason) => {
     console.log('Socket disconnected:', reason);
-    statusIndicator.className = 'fixed top-2 right-2 p-2 rounded-full bg-red-600 transition-all duration-300';
+    statusIndicator.className = 'fixed top-2 right-2 p-2 rounded-full text-red-600 transition-all duration-300';
     statusIndicator.textContent = '●';
     statusIndicator.classList.remove('hidden', 'opacity-0');
   });
 
   socket.on('reconnecting', (attemptNumber) => {
     console.log('Socket reconnecting, attempt:', attemptNumber);
-    statusIndicator.className = 'fixed top-2 right-2 p-2 rounded-full bg-yellow-600 transition-all duration-300';
+    statusIndicator.className = 'fixed top-2 right-2 p-2 rounded-full text-yellow-600 transition-all duration-300';
     statusIndicator.textContent = '●';
     statusIndicator.classList.remove('hidden', 'opacity-0');
   });
 
   socket.on('reconnect', () => {
     console.log('Socket reconnected');
-    statusIndicator.className = 'fixed top-2 right-2 p-2 rounded-full bg-green-600 transition-all duration-300';
+    statusIndicator.className = 'fixed top-2 right-2 p-2 rounded-full text-green-600 transition-all duration-300';
     statusIndicator.textContent = '●';
 
     // Refresh data when reconnected
@@ -237,7 +254,7 @@
 
   socket.on('reconnect_error', (error) => {
     console.error('Socket reconnect error:', error);
-    statusIndicator.className = 'fixed top-2 right-2 p-2 rounded-full bg-red-600 transition-all duration-300';
+    statusIndicator.className = 'fixed top-2 right-2 p-2 rounded-full text-red-600 transition-all duration-300';
     statusIndicator.textContent = '●';
     statusIndicator.classList.remove('hidden', 'opacity-0');
   });
@@ -278,31 +295,26 @@
     }
   }
 
+  window.shareCounter = shareCounter;
+
   function addCounterItem(id, name, value) {
     const li = document.createElement("li");
     li.id = id;
+    li.className = "flex flex-row justify-between items-center p-3 bg-amber-50 rounded-lg border border-amber-200 transition-all hover_border-amber-300";
 
-    const outer_span = document.createElement("span");
-    outer_span.className =
-      "flex transition-[background-color] hover_bg-[#242424] active:_bg-[#222] border-y border-[#313131] border-b-0";
-    li.appendChild(outer_span);
+    const name_span = document.createElement("span");
+    name_span.textContent = name;
+    name_span.className = "text-amber-900 truncate mr-4 max-w-[60%]";
+    li.appendChild(name_span);
 
-    const outer_span2 = document.createElement("span");
-    outer_span2.className = "py-3 flex grow items-center";
-    outer_span.appendChild(outer_span2);
-
-    const share_button_container = document.createElement("span");
-    share_button_container.classList = "grow text-gray-100";
-    outer_span2.appendChild(share_button_container);
-
-    const name_share_button = document.createElement("button");
-    name_share_button.onclick = () => shareCounter(id, name);
-    name_share_button.textContent = name;
-    share_button_container.appendChild(name_share_button);
+    const button_container = document.createElement("div");
+    button_container.className = "flex items-center space-x-2";
+    li.appendChild(button_container);
 
     const increment_button = document.createElement("button");
-    increment_button.className = "flex items-center";
+    increment_button.className = "px-3 py-1 bg-amber-100 text-amber-800 rounded-md min-w-[3.5rem] text-center font-medium focus_outline-none focus_ring-2 focus_ring-amber-500 focus_bg-amber-200 hover_bg-amber-200 transition-colors";
     increment_button.onclick = () => incr(id);
+    button_container.appendChild(increment_button);
 
     const counter_value = document.createElement("span");
     counter_value.className = "value";
@@ -314,7 +326,6 @@
     incrementText.textContent = "++";
     increment_button.appendChild(incrementText);
 
-    outer_span2.appendChild(increment_button);
 
     counters_list.appendChild(li);
   }
