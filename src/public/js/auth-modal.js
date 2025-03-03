@@ -15,7 +15,6 @@ class AuthModal {
     }
 
     setupEventListeners() {
-        this.authButton.addEventListener('click', () => this.show());
         this.closeBtn.addEventListener('click', () => this.hide());
         this.toggleBtn.addEventListener('click', () => this.toggleMode());
         this.form.addEventListener('submit', (e) => this.handleSubmit(e));
@@ -33,8 +32,16 @@ class AuthModal {
             
             if (data.authenticated) {
                 this.authButton.textContent = data.username;
+                // Remove click handler and update appearance for logged in state
+                this.authButton.removeEventListener('click', () => this.show());
+                this.authButton.classList.add('opacity-50', 'cursor-default');
+                this.authButton.classList.remove('hover:border-amber-300', 'hover:text-amber-900', 'hover:bg-amber-50');
             } else {
                 this.authButton.textContent = 'login';
+                // Ensure button is clickable and has hover effects
+                this.authButton.addEventListener('click', () => this.show());
+                this.authButton.classList.remove('opacity-50', 'cursor-default');
+                this.authButton.classList.add('hover:border-amber-300', 'hover:text-amber-900', 'hover:bg-amber-50');
             }
         } catch (error) {
             console.error('Failed to check auth status:', error);
