@@ -179,10 +179,8 @@
 
     // Subscribe to appropriate room based on page type
     if (isPrivatePage) {
-      console.log("Subscribing to private room");
       socket.emit("subscribe", "private");
     } else {
-      console.log("Subscribing to public");
       socket.emit("subscribe", "public");
     }
   });
@@ -196,7 +194,6 @@
   });
 
   socket.on("disconnect", (reason) => {
-    console.log("Socket disconnected:", reason);
     statusIndicator.className =
       "fixed top-2 right-2 p-2 rounded-full text-red-600 transition-all duration-300";
     statusIndicator.textContent = "●";
@@ -204,7 +201,6 @@
   });
 
   socket.on("reconnecting", (attemptNumber) => {
-    console.log("Socket reconnecting, attempt:", attemptNumber);
     statusIndicator.className =
       "fixed top-2 right-2 p-2 rounded-full text-yellow-600 transition-all duration-300";
     statusIndicator.textContent = "●";
@@ -212,7 +208,6 @@
   });
 
   socket.on("reconnect", () => {
-    console.log("Socket reconnected");
     statusIndicator.className =
       "fixed top-2 right-2 p-2 rounded-full text-green-600 transition-all duration-300";
     statusIndicator.textContent = "●";
@@ -288,6 +283,61 @@
     button_container.className = "flex items-center space-x-2";
     li.appendChild(button_container);
 
+    // Add share button
+    const share_button = document.createElement("button");
+    share_button.className = "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 hover:bg-accent h-10 w-10 text-amber-600 hover:text-amber-700";
+    share_button.onclick = () => shareCounter(id, name);
+    
+    // Create SVG for share button
+    const svgNS = "http://www.w3.org/2000/svg";
+    const svg = document.createElementNS(svgNS, "svg");
+    svg.setAttribute("xmlns", svgNS);
+    svg.setAttribute("width", "24");
+    svg.setAttribute("height", "24");
+    svg.setAttribute("viewBox", "0 0 24 24");
+    svg.setAttribute("fill", "none");
+    svg.setAttribute("stroke", "currentColor");
+    svg.setAttribute("stroke-width", "2");
+    svg.setAttribute("stroke-linecap", "round");
+    svg.setAttribute("stroke-linejoin", "round");
+    svg.setAttribute("class", "lucide lucide-share2 h-4 w-4");
+    
+    // Add circles and lines to the SVG
+    const circle1 = document.createElementNS(svgNS, "circle");
+    circle1.setAttribute("cx", "18");
+    circle1.setAttribute("cy", "5");
+    circle1.setAttribute("r", "3");
+    svg.appendChild(circle1);
+    
+    const circle2 = document.createElementNS(svgNS, "circle");
+    circle2.setAttribute("cx", "6");
+    circle2.setAttribute("cy", "12");
+    circle2.setAttribute("r", "3");
+    svg.appendChild(circle2);
+    
+    const circle3 = document.createElementNS(svgNS, "circle");
+    circle3.setAttribute("cx", "18");
+    circle3.setAttribute("cy", "19");
+    circle3.setAttribute("r", "3");
+    svg.appendChild(circle3);
+    
+    const line1 = document.createElementNS(svgNS, "line");
+    line1.setAttribute("x1", "8.59");
+    line1.setAttribute("x2", "15.42");
+    line1.setAttribute("y1", "13.51");
+    line1.setAttribute("y2", "17.49");
+    svg.appendChild(line1);
+    
+    const line2 = document.createElementNS(svgNS, "line");
+    line2.setAttribute("x1", "15.41");
+    line2.setAttribute("x2", "8.59");
+    line2.setAttribute("y1", "6.51");
+    line2.setAttribute("y2", "10.49");
+    svg.appendChild(line2);
+    
+    share_button.appendChild(svg);
+    button_container.appendChild(share_button);
+
     const increment_button = document.createElement("button");
     increment_button.className =
       "px-3 py-1 bg-amber-100 text-amber-800 rounded-md min-w-[3.5rem] text-center font-medium focus_outline-none focus_ring-2 focus_ring-amber-500 focus_bg-amber-200 hover_bg-amber-200 transition-colors";
@@ -326,7 +376,6 @@
 
     // Handle updates to private counters
     socket.on("private:update", (counter) => {
-      console.log("Received private:update event", counter);
       const li = document.getElementById(counter.id);
       if (li) {
         li.querySelector(".value").textContent = ` ${counter.value}`;
@@ -337,7 +386,6 @@
 
     // Handle new private counters
     socket.on("private:new", (counter) => {
-      console.log("Received private:new event", counter);
       addCounterItem(counter.id, counter.name, counter.value);
     });
   } else {
@@ -346,7 +394,6 @@
 
     // Handle updates to public counters
     socket.on("update", (counter) => {
-      console.log("Received update event", counter);
       const li = document.getElementById(counter.id);
       if (li) {
         li.querySelector(".value").textContent = ` ${counter.value}`;
@@ -357,7 +404,6 @@
 
     // Handle new public counters
     socket.on("new", (counter) => {
-      console.log("Received new event", counter);
       addCounterItem(counter.id, counter.name, counter.value);
     });
   }
