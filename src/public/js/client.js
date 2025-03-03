@@ -144,7 +144,6 @@
 
   // Socket connection event handlers
   socket.on("connect", () => {
-    console.log("Socket connected");
     statusIndicator.className =
       "fixed top-2 right-2 p-2 rounded-full transition-all duration-300 text-green-600";
     statusIndicator.textContent = "●";

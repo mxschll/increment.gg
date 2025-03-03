@@ -10,7 +10,6 @@ document.addEventListener('DOMContentLoaded', () => {
   
   const nameInput = document.getElementById('counterName');
   const publicToggle = document.getElementById('publicToggle');
-  const privateLabel = document.getElementById('privateLabel');
   const publicLabel = document.getElementById('publicLabel');
   const cancelBtn = document.getElementById('closeCreateModalBtn');
   const createBtn = document.getElementById('createCounterBtn');
@@ -34,17 +33,14 @@ document.addEventListener('DOMContentLoaded', () => {
   // Function to update toggle styling
   function updateToggleStyle() {
     const toggleSlider = publicToggle.nextElementSibling;
-    
     if (publicToggle.checked) {
       toggleSlider.classList.add('bg-blue-600');
       toggleSlider.querySelector('span').classList.add('translate-x-5');
-      privateLabel.className = 'text-sm text-gray-400 mr-2';
-      publicLabel.className = 'text-sm text-gray-400 ml-2 font-bold';
+      publicLabel.classList.add('font-bold');
     } else {
       toggleSlider.classList.remove('bg-blue-600');
       toggleSlider.querySelector('span').classList.remove('translate-x-5');
-      privateLabel.className = 'text-sm text-gray-400 mr-2 font-bold';
-      publicLabel.className = 'text-sm text-gray-400 ml-2';
+      publicLabel.classList.remove('font-bold');
     }
   }
   
@@ -79,11 +75,6 @@ document.addEventListener('DOMContentLoaded', () => {
     })
     .then(data => {
       closeModal();
-      
-      // Refresh the counters list to show the newly created counter
-      if (window.fetchCounters) {
-        window.fetchCounters();
-      }
     })
     .catch(error => {
       console.error('Error creating counter:', error);
