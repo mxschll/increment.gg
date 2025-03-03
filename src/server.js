@@ -438,7 +438,7 @@ app.get("/counters/private", (req, res) => {
        FROM counters c
        JOIN user_counters uc ON c.id = uc.counter_id
        WHERE uc.user_id = ? AND c.public = 0
-       ORDER BY c.value DESC`,
+       ${getOrderClause()}`,
     [req.userId],
     (err, rows) => {
       if (err) return handleError(res, 500, err.message);
