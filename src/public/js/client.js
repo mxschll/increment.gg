@@ -66,28 +66,7 @@
   // Function to fetch counters (public or private based on page type)
   function fetchCounters() {
     const endpoint = isPrivatePage ? "/counters/private" : "/counters";
-
-    // If we're on the private page, we need authentication
-    if (isPrivatePage) {
-      // Check if we're already authenticated by making the request
-      // If we're not, the server will respond with a 401
-      fetch("/auth/status")
-        .then(response => {
-          if (response.status === 401) {
-            counters_list.innerHTML =
-              '<li class="py-3 text-yellow-400">Authenticating...</li>';
-            return;
-          }
-          loadCounters(endpoint);
-        })
-        .catch(() => {
-          // On error, attempt to load counters anyway
-          loadCounters(endpoint);
-        });
-    } else {
-      // Public page doesn't need auth check
-      loadCounters(endpoint);
-    }
+    loadCounters(endpoint);
   }
 
   function loadCounters(endpoint) {
@@ -112,7 +91,7 @@
         if (
           counters_list.children.length === 1 &&
           (counters_list.children[0].classList.contains("text-yellow-400") ||
-           counters_list.children[0].classList.contains("text-red-400"))
+            counters_list.children[0].classList.contains("text-red-400"))
         ) {
           counters_list.innerHTML = "";
         }
@@ -147,7 +126,7 @@
     if (isPrivatePage) {
       fetchCounters();
 
-      // If using sockets, reconnect 
+      // If using sockets, reconnect
       if (socket) {
         socket.disconnect();
         socket.connect();
@@ -285,9 +264,10 @@
 
     // Add share button
     const share_button = document.createElement("button");
-    share_button.className = "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 hover:bg-accent h-10 w-10 text-amber-600 hover:text-amber-700";
+    share_button.className =
+      "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 hover:bg-accent h-10 w-10 text-amber-600 hover:text-amber-700";
     share_button.onclick = () => shareCounter(id, name);
-    
+
     // Create SVG for share button
     const svgNS = "http://www.w3.org/2000/svg";
     const svg = document.createElementNS(svgNS, "svg");
@@ -301,40 +281,40 @@
     svg.setAttribute("stroke-linecap", "round");
     svg.setAttribute("stroke-linejoin", "round");
     svg.setAttribute("class", "lucide lucide-share2 h-4 w-4");
-    
+
     // Add circles and lines to the SVG
     const circle1 = document.createElementNS(svgNS, "circle");
     circle1.setAttribute("cx", "18");
     circle1.setAttribute("cy", "5");
     circle1.setAttribute("r", "3");
     svg.appendChild(circle1);
-    
+
     const circle2 = document.createElementNS(svgNS, "circle");
     circle2.setAttribute("cx", "6");
     circle2.setAttribute("cy", "12");
     circle2.setAttribute("r", "3");
     svg.appendChild(circle2);
-    
+
     const circle3 = document.createElementNS(svgNS, "circle");
     circle3.setAttribute("cx", "18");
     circle3.setAttribute("cy", "19");
     circle3.setAttribute("r", "3");
     svg.appendChild(circle3);
-    
+
     const line1 = document.createElementNS(svgNS, "line");
     line1.setAttribute("x1", "8.59");
     line1.setAttribute("x2", "15.42");
     line1.setAttribute("y1", "13.51");
     line1.setAttribute("y2", "17.49");
     svg.appendChild(line1);
-    
+
     const line2 = document.createElementNS(svgNS, "line");
     line2.setAttribute("x1", "15.41");
     line2.setAttribute("x2", "8.59");
     line2.setAttribute("y1", "6.51");
     line2.setAttribute("y2", "10.49");
     svg.appendChild(line2);
-    
+
     share_button.appendChild(svg);
     button_container.appendChild(share_button);
 

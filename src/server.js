@@ -324,17 +324,6 @@ app.get("/join/:joinId", (req, res) => {
   );
 });
 
-app.post("/auth/register", (req, res) => {
-  const id = generateId();
-  const token = generateId();
-
-  db.run("INSERT INTO users (id, token) VALUES (?, ?)", [id, token], (err) => {
-    if (err) return handleError(res, 500, err.message);
-    setAuthCookie(res, token);
-    res.json({ id, token });
-  });
-});
-
 app.post("/counters", (req, res) => {
   let { name, public } = req.body;
 
@@ -428,59 +417,6 @@ app.post("/counters/:id/share", (req, res) => {
   );
 });
 
-app.post("/counters/join/:joinId", (req, res) => {
-  const { joinId } = req.params;
-  const { id: userId } = req.body;
-
-  if (!req.token) {
-    return handleError(res, 401, "Authentication required");
-  }
-
-  db.get(
-    "SELECT counter_id FROM join_tokens WHERE token = ?",
-    [joinId],
-    (err, row) => {
-      if (err) return handleError(res, 500, err.message);
-      if (!row) return handleError(res, 404, "Invalid join ID");
-
-      db.get(
-        "SELECT * FROM user_counters WHERE user_id = ? AND counter_id = ?",
-        [userId, row.counter_id],
-        (err, existingRow) => {
-          if (err) return handleError(res, 500, err.message);
-          if (existingRow) {
-            return res.json({
-              success: true,
-              message: "Already joined to this counter",
-            });
-          }
-
-          db.run(
-            "INSERT INTO user_counters (user_id, counter_id) VALUES (?, ?)",
-            [userId, row.counter_id],
-            (err) => {
-              if (err) return handleError(res, 500, err.message);
-
-              db.get(
-                "SELECT id, name, value, DATE(created_at) as created_at FROM counters WHERE id = ?",
-                [row.counter_id],
-                (err, counter) => {
-                  if (err) return handleError(res, 500, err.message);
-                  res.json({
-                    success: true,
-                    message: "Successfully joined counter",
-                    counter,
-                  });
-                },
-              );
-            },
-          );
-        },
-      );
-    },
-  );
-});
-
 app.get("/counters", (req, res) => {
   db.all(
     `SELECT id, name, value, DATE(created_at) as created_at 
@@ -527,22 +463,6 @@ app.post("/counters/:id/increment", (req, res) => {
       },
     );
   });
-});
-
-app.get("/auth/status", (req, res) => {
-  if (!req.token) {
-    return res
-      .status(401)
-      .json({ authenticated: false, message: "No token provided" });
-  }
-  if (!req.userId) {
-    return res
-      .status(401)
-      .json({ authenticated: false, message: "Invalid token" });
-  }
-
-  setAuthCookie(res, req.token);
-  res.json({ authenticated: true, user: { id: req.userId } });
 });
 
 app.post("/auth/logout", (req, res) => {
