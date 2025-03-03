@@ -1,17 +1,15 @@
 // Unified client-side code for both public and private counter pages
 (function () {
   // Determine page type based on URL path
-  const isPrivatePage = window.location.pathname.includes('/private') || window.location.pathname.includes('/join');
-  const isJoinPage = window.location.pathname.includes('/join');
+  const isPrivatePage =
+    window.location.pathname.includes("/private") ||
+    window.location.pathname.includes("/join");
 
   // Create status indicator element
-  const statusIndicator = document.createElement('div');
-  statusIndicator.className = 'fixed top-2 right-2 p-2 rounded-full transition-all duration-300 hidden z-50';
+  const statusIndicator = document.createElement("div");
+  statusIndicator.className =
+    "fixed top-2 right-2 p-2 rounded-full transition-all duration-300 hidden z-50";
   document.body.appendChild(statusIndicator);
-
-  // Get user info from localStorage
-  let userId = localStorage.getItem('increment_client_id');
-  let token = localStorage.getItem('increment_client_token');
 
   // Configure socket with reconnection settings
   const socket = io({
@@ -20,159 +18,136 @@
     reconnectionDelay: 1000,
     reconnectionDelayMax: 5000,
     timeout: 20000,
-    auth: {
-      token: token
-    }
+    // Cookies will be sent automatically with the socket connection
   });
 
   const counters_list = document.getElementById("counters");
 
   // Common function to prepare headers for API requests
   function getHeaders() {
-    // Get the latest token value
-    const currentToken = localStorage.getItem('increment_client_token');
-
-    const headers = {
-      'Content-Type': 'application/json'
+    return {
+      "Content-Type": "application/json",
+      // No need to manually add Authorization header, cookies are sent automatically
     };
-
-    if (currentToken) {
-      headers['Authorization'] = `Bearer ${currentToken}`;
-    }
-
-    return headers;
   }
 
   // Function to submit a join request
   function submitJoinRequest(joinId) {
-    // Get the latest token
-    token = localStorage.getItem('increment_client_token');
-
-    if (!token) {
-      console.error('No authentication token available');
-      if (counters_list) {
-        counters_list.innerHTML = '<li class="py-3 text-red-400">Authentication required to join this counter.</li>';
-      }
-      return;
-    }
-
     // Show loading state
     if (counters_list) {
-      counters_list.innerHTML = '<li class="py-3 text-yellow-400">Joining counter...</li>';
+      counters_list.innerHTML =
+        '<li class="py-3 text-yellow-400">Joining counter...</li>';
     }
 
     // Submit join request to server
     fetch(`/counters/join/${joinId}`, {
-      method: 'POST',
-      headers: getHeaders()
+      method: "POST",
+      headers: getHeaders(),
+      // Cookies will be sent automatically
     })
-      .then(response => {
+      .then((response) => {
         if (!response.ok) {
           throw new Error(`Failed to join counter: ${response.status}`);
         }
         return response.json();
       })
-      .then(data => {
-        window.location.href = '/private';
+      .then((data) => {
+        window.location.href = "/private";
       })
-      .catch(error => {
-        console.error('Error joining counter:', error);
+      .catch((error) => {
+        console.error("Error joining counter:", error);
         if (counters_list) {
-          counters_list.innerHTML = '<li class="py-3 text-red-400">Failed to join counter. The link may be invalid or expired.</li>';
+          counters_list.innerHTML =
+            '<li class="py-3 text-red-400">Failed to join counter. The link may be invalid or expired.</li>';
         }
       });
   }
 
   // Function to fetch counters (public or private based on page type)
   function fetchCounters() {
-    const endpoint = isPrivatePage ? '/counters/private' : '/counters';
+    const endpoint = isPrivatePage ? "/counters/private" : "/counters";
 
-    // Update token and userId from localStorage
-    token = localStorage.getItem('increment_client_token');
-    userId = localStorage.getItem('increment_client_id');
-
-    // If we're on the private page but don't have a token, register first
-    if (isPrivatePage && (!token || !userId)) {
-      counters_list.innerHTML = '<li class="py-3 text-yellow-400">Authenticating...</li>';
-      return;
-    }
-
-    // Only proceed with fetch if we have the necessary credentials for private page
-    if (!isPrivatePage || (isPrivatePage && token && userId)) {
-      fetch(endpoint, {
-        method: 'GET',
-        headers: getHeaders()
-      })
+    // If we're on the private page, we need authentication
+    if (isPrivatePage) {
+      // Check if we're already authenticated by making the request
+      // If we're not, the server will respond with a 401
+      fetch("/auth/status")
         .then(response => {
-          if (!response.ok) {
-            if (response.status === 401 && isPrivatePage) {
-              counters_list.innerHTML = '<li class="py-3 text-yellow-400">Authenticating...</li>';
-            }
-            throw new Error(`Failed to fetch counters: ${response.status}`);
+          if (response.status === 401) {
+            counters_list.innerHTML =
+              '<li class="py-3 text-yellow-400">Authenticating...</li>';
+            return;
           }
-          return response.json();
+          loadCounters(endpoint);
         })
-        .then(data => {
-          const counters = data.counters || data;
-          
-          // If the list only contains an error/status message, clear it
-          if (counters_list.children.length === 1 && 
-              counters_list.children[0].classList.contains('text-yellow-400') || 
-              counters_list.children[0].classList.contains('text-red-400')) {
-            counters_list.innerHTML = '';
-          }
-
-          counters.forEach(counter => {
-            const existingCounter = document.getElementById(counter.id);
-            if (existingCounter) {
-              // Update existing counter value
-              const valueSpan = existingCounter.querySelector(".value");
-              if (valueSpan) {
-                valueSpan.textContent = ` ${counter.value}`;
-              }
-            } else {
-              // Add new counter to the list
-              addCounterItem(counter.id, counter.name, counter.value);
-            }
-          });
-        })
-        .catch(error => {
-          console.error('Error fetching counters:', error);
-          // Only show error if list is empty
-          if (!counters_list.children.length) {
-            counters_list.innerHTML = '<li class="py-3 text-red-400">Failed to load counters. Please check your authentication.</li>';
-          }
+        .catch(() => {
+          // On error, attempt to load counters anyway
+          loadCounters(endpoint);
         });
+    } else {
+      // Public page doesn't need auth check
+      loadCounters(endpoint);
     }
   }
 
+  function loadCounters(endpoint) {
+    fetch(endpoint, {
+      method: "GET",
+      headers: getHeaders(),
+    })
+      .then((response) => {
+        if (!response.ok) {
+          if (response.status === 401 && isPrivatePage) {
+            counters_list.innerHTML =
+              '<li class="py-3 text-yellow-400">Authenticating...</li>';
+          }
+          throw new Error(`Failed to fetch counters: ${response.status}`);
+        }
+        return response.json();
+      })
+      .then((data) => {
+        const counters = data.counters || data;
+
+        // If the list only contains an error/status message, clear it
+        if (
+          counters_list.children.length === 1 &&
+          (counters_list.children[0].classList.contains("text-yellow-400") ||
+           counters_list.children[0].classList.contains("text-red-400"))
+        ) {
+          counters_list.innerHTML = "";
+        }
+
+        counters.forEach((counter) => {
+          const existingCounter = document.getElementById(counter.id);
+          if (existingCounter) {
+            // Update existing counter value
+            const valueSpan = existingCounter.querySelector(".value");
+            if (valueSpan) {
+              valueSpan.textContent = ` ${counter.value}`;
+            }
+          } else {
+            // Add new counter to the list
+            addCounterItem(counter.id, counter.name, counter.value);
+          }
+        });
+      })
+      .catch((error) => {
+        console.error("Error fetching counters:", error);
+        // Only show error if list is empty
+        if (!counters_list.children.length) {
+          counters_list.innerHTML =
+            '<li class="py-3 text-red-400">Failed to load counters. Please check your authentication.</li>';
+        }
+      });
+  }
+
   // Listen for registration complete event
-  window.addEventListener(window.REGISTRATION_COMPLETE_EVENT, (event) => {
-    token = event.detail.token;
-    userId = event.detail.clientId;
-
-    // Update socket auth with new token
-    socket.auth = { token };
-
+  window.addEventListener(window.REGISTRATION_COMPLETE_EVENT, () => {
     // If we're on the private page, fetch counters again
     if (isPrivatePage) {
-      // If we're on the join page, submit the join request
-      if (isJoinPage) {
-        // Extract join ID from URL or use the one provided by the server
-        const joinId = window.JOIN_ID || window.location.pathname.split('/join/')[1];
-        if (joinId) {
-          submitJoinRequest(joinId);
-        } else {
-          if (counters_list) {
-            counters_list.innerHTML = '<li class="py-3 text-red-400">Invalid join link. No counter ID provided.</li>';
-          }
-        }
-      } else {
-        // Otherwise, fetch private counters
-        fetchCounters();
-      }
+      fetchCounters();
 
-      // If using sockets, reconnect with new credentials
+      // If using sockets, reconnect 
       if (socket) {
         socket.disconnect();
         socket.connect();
@@ -183,80 +158,81 @@
   // Function to handle fetch errors and suppress 401 errors in console
   function handleFetchError(error, operation) {
     // Suppress 401 errors in the console
-    if (!error.message || !error.message.includes('401')) {
+    if (!error.message || !error.message.includes("401")) {
       console.error(`Error during ${operation}:`, error);
     }
   }
 
   // Socket connection event handlers
-  socket.on('connect', () => {
-    console.log('Socket connected');
-    statusIndicator.className = 'fixed top-2 right-2 p-2 rounded-full transition-all duration-300 text-green-600';
-    statusIndicator.textContent = '●';
-    statusIndicator.classList.remove('hidden', 'opacity-0');
+  socket.on("connect", () => {
+    console.log("Socket connected");
+    statusIndicator.className =
+      "fixed top-2 right-2 p-2 rounded-full transition-all duration-300 text-green-600";
+    statusIndicator.textContent = "●";
+    statusIndicator.classList.remove("hidden", "opacity-0");
 
     // Hide the indicator after 3 seconds
     setTimeout(() => {
-      statusIndicator.classList.add('opacity-0');
-      setTimeout(() => statusIndicator.classList.add('hidden'), 300);
+      statusIndicator.classList.add("opacity-0");
+      setTimeout(() => statusIndicator.classList.add("hidden"), 300);
     }, 3000);
 
-    // Get the latest userId from localStorage
-    const currentUserId = localStorage.getItem('increment_client_id');
-
     // Subscribe to appropriate room based on page type
-    if (isPrivatePage && currentUserId) {
-      console.log(`Subscribing to private:${currentUserId}`);
-      socket.emit("subscribe", `private:${currentUserId}`);
-      // Update the local userId variable
-      userId = currentUserId;
+    if (isPrivatePage) {
+      console.log("Subscribing to private room");
+      socket.emit("subscribe", "private");
     } else {
-      console.log('Subscribing to public');
+      console.log("Subscribing to public");
       socket.emit("subscribe", "public");
     }
   });
 
-  socket.on('connect_error', (error) => {
-    console.error('Socket connection error:', error);
-    statusIndicator.className = 'fixed top-2 right-2 p-2 rounded-full text-red-600 transition-all duration-300';
-    statusIndicator.textContent = '●';
-    statusIndicator.classList.remove('hidden', 'opacity-0');
+  socket.on("connect_error", (error) => {
+    console.error("Socket connection error:", error);
+    statusIndicator.className =
+      "fixed top-2 right-2 p-2 rounded-full text-red-600 transition-all duration-300";
+    statusIndicator.textContent = "●";
+    statusIndicator.classList.remove("hidden", "opacity-0");
   });
 
-  socket.on('disconnect', (reason) => {
-    console.log('Socket disconnected:', reason);
-    statusIndicator.className = 'fixed top-2 right-2 p-2 rounded-full text-red-600 transition-all duration-300';
-    statusIndicator.textContent = '●';
-    statusIndicator.classList.remove('hidden', 'opacity-0');
+  socket.on("disconnect", (reason) => {
+    console.log("Socket disconnected:", reason);
+    statusIndicator.className =
+      "fixed top-2 right-2 p-2 rounded-full text-red-600 transition-all duration-300";
+    statusIndicator.textContent = "●";
+    statusIndicator.classList.remove("hidden", "opacity-0");
   });
 
-  socket.on('reconnecting', (attemptNumber) => {
-    console.log('Socket reconnecting, attempt:', attemptNumber);
-    statusIndicator.className = 'fixed top-2 right-2 p-2 rounded-full text-yellow-600 transition-all duration-300';
-    statusIndicator.textContent = '●';
-    statusIndicator.classList.remove('hidden', 'opacity-0');
+  socket.on("reconnecting", (attemptNumber) => {
+    console.log("Socket reconnecting, attempt:", attemptNumber);
+    statusIndicator.className =
+      "fixed top-2 right-2 p-2 rounded-full text-yellow-600 transition-all duration-300";
+    statusIndicator.textContent = "●";
+    statusIndicator.classList.remove("hidden", "opacity-0");
   });
 
-  socket.on('reconnect', () => {
-    console.log('Socket reconnected');
-    statusIndicator.className = 'fixed top-2 right-2 p-2 rounded-full text-green-600 transition-all duration-300';
-    statusIndicator.textContent = '●';
+  socket.on("reconnect", () => {
+    console.log("Socket reconnected");
+    statusIndicator.className =
+      "fixed top-2 right-2 p-2 rounded-full text-green-600 transition-all duration-300";
+    statusIndicator.textContent = "●";
 
     // Refresh data when reconnected
     fetchCounters();
 
     // Hide the indicator after 3 seconds
     setTimeout(() => {
-      statusIndicator.classList.add('opacity-0');
-      setTimeout(() => statusIndicator.classList.add('hidden'), 300);
+      statusIndicator.classList.add("opacity-0");
+      setTimeout(() => statusIndicator.classList.add("hidden"), 300);
     }, 3000);
   });
 
-  socket.on('reconnect_error', (error) => {
-    console.error('Socket reconnect error:', error);
-    statusIndicator.className = 'fixed top-2 right-2 p-2 rounded-full text-red-600 transition-all duration-300';
-    statusIndicator.textContent = '●';
-    statusIndicator.classList.remove('hidden', 'opacity-0');
+  socket.on("reconnect_error", (error) => {
+    console.error("Socket reconnect error:", error);
+    statusIndicator.className =
+      "fixed top-2 right-2 p-2 rounded-full text-red-600 transition-all duration-300";
+    statusIndicator.textContent = "●";
+    statusIndicator.classList.remove("hidden", "opacity-0");
   });
 
   function incr(id) {
@@ -268,9 +244,9 @@
 
       fetch(`/counters/${id}/increment`, {
         method: "POST",
-        headers: getHeaders()
+        headers: getHeaders(),
       })
-        .then(response => {
+        .then((response) => {
           if (response.status === 401) {
             // Handle unauthorized errors
             if (window.handleTokenInvalidation) {
@@ -279,9 +255,9 @@
           }
           return response;
         })
-        .catch(error => {
+        .catch((error) => {
           // Use the error handler to suppress 401 errors
-          handleFetchError(error, 'counter increment');
+          handleFetchError(error, "counter increment");
         });
     }
   }
@@ -291,7 +267,7 @@
     if (window.shareModal) {
       window.shareModal.open(id, name);
     } else {
-      console.error('Share modal not found');
+      console.error("Share modal not found");
     }
   }
 
@@ -300,7 +276,8 @@
   function addCounterItem(id, name, value) {
     const li = document.createElement("li");
     li.id = id;
-    li.className = "flex flex-row justify-between items-center p-3 bg-amber-50 rounded-lg border border-amber-200 transition-all hover_border-amber-300";
+    li.className =
+      "flex flex-row justify-between items-center p-3 bg-amber-50 rounded-lg border border-amber-200 transition-all hover_border-amber-300";
 
     const name_span = document.createElement("span");
     name_span.textContent = name;
@@ -312,7 +289,8 @@
     li.appendChild(button_container);
 
     const increment_button = document.createElement("button");
-    increment_button.className = "px-3 py-1 bg-amber-100 text-amber-800 rounded-md min-w-[3.5rem] text-center font-medium focus_outline-none focus_ring-2 focus_ring-amber-500 focus_bg-amber-200 hover_bg-amber-200 transition-colors";
+    increment_button.className =
+      "px-3 py-1 bg-amber-100 text-amber-800 rounded-md min-w-[3.5rem] text-center font-medium focus_outline-none focus_ring-2 focus_ring-amber-500 focus_bg-amber-200 hover_bg-amber-200 transition-colors";
     increment_button.onclick = () => incr(id);
     button_container.appendChild(increment_button);
 
@@ -326,13 +304,12 @@
     incrementText.textContent = "++";
     increment_button.appendChild(incrementText);
 
-
     counters_list.appendChild(li);
   }
 
   // Add visibility change handler to monitor when tab is in background
-  document.addEventListener('visibilitychange', () => {
-    if (document.visibilityState === 'visible') {
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState === "visible") {
       // Page is now visible - check connection status
       if (!socket.connected) {
         socket.connect();
@@ -345,33 +322,7 @@
 
   // Set up event handlers based on page type
   if (isPrivatePage) {
-    // Check if we're on the join page
-    if (isJoinPage) {
-      // Extract join ID from URL or use the one provided by the server
-      const joinId = window.JOIN_ID || window.location.pathname.split('/join/')[1];
-
-      if (joinId) {
-        // Check if user is authenticated
-        if (!token) {
-          // If not authenticated, show message and wait for authentication
-          if (counters_list) {
-            counters_list.innerHTML = '<li class="py-3 text-yellow-400">Please authenticate to join this counter...</li>';
-          }
-          // Authentication will be handled by the REGISTRATION_COMPLETE_EVENT listener
-        } else {
-          // User is already authenticated, submit join request
-          submitJoinRequest(joinId);
-        }
-      } else {
-        // No join ID provided
-        if (counters_list) {
-          counters_list.innerHTML = '<li class="py-3 text-red-400">Invalid join link. No counter ID provided.</li>';
-        }
-      }
-    } else {
-      // Regular private page, fetch counters
-      fetchCounters();
-    }
+    fetchCounters();
 
     // Handle updates to private counters
     socket.on("private:update", (counter) => {

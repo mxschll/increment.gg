@@ -138,6 +138,43 @@ app.use((req, res, next) => {
   });
 });
 
+// ===== Auto-Registration Middleware =====
+app.use((req, res, next) => {
+  // Skip for static resources and API endpoints
+  if (req.path.startsWith('/css') || 
+      req.path.startsWith('/js') || 
+      req.path.startsWith('/dist') || 
+      req.path.startsWith('/socket.io') ||
+      req.path === '/favicon.ico') {
+    return next();
+  }
+  
+  // If user is already authenticated, proceed
+  if (req.userId) {
+    return next();
+  }
+  
+  // Auto-register new users
+  const userId = generateId();
+  const token = generateId();
+  
+  db.run("INSERT INTO users (id, token) VALUES (?, ?)", [userId, token], (err) => {
+    if (err) {
+      console.error("Failed to auto-register user:", err);
+      return next(); // Continue anyway to avoid blocking the request
+    }
+    
+    // Set the auth cookie
+    setAuthCookie(res, token);
+    
+    // Update the request with the new user ID
+    req.userId = userId;
+    req.token = token;
+    
+    next();
+  });
+});
+
 app.set("views", path.join(__dirname, "views"));
 app.set("view engine", "pug");
 
@@ -174,13 +211,77 @@ app.get("/private", (req, res) => {
 // ===== API Routes =====
 app.get("/join/:joinId", (req, res) => {
   const { joinId } = req.params;
-  if (!joinId || joinId.length !== 6) {
+  if (!joinId || joinId.length !== 32) {
     return res.render("private", {
       error: "Invalid join link",
       path: req.path,
+      counters: [],
     });
   }
-  res.render("private", { joinId, path: req.path });
+  
+  // First verify the join token is valid
+  db.get(
+    "SELECT counter_id FROM join_tokens WHERE token = ?",
+    [joinId],
+    (err, row) => {
+      if (err) {
+        return res.render("private", { 
+          joinId, 
+          path: req.path, 
+          counters: [],
+          error: "Database error" 
+        });
+      }
+      
+      if (!row) {
+        return res.render("private", { 
+          joinId, 
+          path: req.path, 
+          counters: [],
+          error: "Invalid join token" 
+        });
+      }
+
+      const counterId = row.counter_id;
+      
+      // Check if the user is already joined to this counter
+      db.get(
+        "SELECT * FROM user_counters WHERE user_id = ? AND counter_id = ?",
+        [req.userId, counterId],
+        (err, existingRow) => {
+          if (err) {
+            return res.render("private", { 
+              joinId, 
+              path: req.path, 
+              counters: [],
+              error: "Database error" 
+            });
+          }
+          
+          if (existingRow) {
+            return res.redirect("/private");
+          }
+
+          // Join the counter to the user's account
+          db.run(
+            "INSERT INTO user_counters (user_id, counter_id) VALUES (?, ?)",
+            [req.userId, counterId],
+            (err) => {
+              if (err) {
+                return res.render("private", { 
+                  joinId, 
+                  path: req.path, 
+                  counters: [],
+                  error: "Failed to join counter" 
+                });
+              }
+              res.redirect("/private");
+            }
+          );
+        }
+      );
+    }
+  );
 });
 
 app.post("/auth/register", (req, res) => {
@@ -280,14 +381,17 @@ app.post("/counters/:id/share", (req, res) => {
     }
 
     db.get(
-      `SELECT created_by FROM counters WHERE id = ?
-       UNION
-       SELECT user_id FROM user_counters WHERE counter_id = ? AND user_id = ?`,
-      [id, id, user.id],
+      `SELECT c.id, c.public 
+       FROM counters c 
+       WHERE c.id = ? AND (
+         c.public = 1 OR 
+         c.created_by = ? OR 
+         EXISTS (SELECT 1 FROM user_counters uc WHERE uc.counter_id = c.id AND uc.user_id = ?)
+       )`,
+      [id, user.id, user.id],
       (err, row) => {
         if (err) return handleError(res, 500, err.message);
-        if (!row)
-          return handleError(res, 403, "User is not joined to the counter");
+        if (!row) return handleError(res, 403, "Cannot share this counter");
 
         const token = generateId();
         db.run(
@@ -340,60 +444,55 @@ app.post("/join", (req, res) => {
 
 app.post("/counters/join/:joinId", (req, res) => {
   const { joinId } = req.params;
+  const { id: userId } = req.body;
 
   if (!req.token) {
     return handleError(res, 401, "Authentication required");
   }
 
-  getUserByToken(req.token, (err, user) => {
-    if (err || !user) {
-      return handleError(res, 401, "Invalid authentication token");
-    }
+  db.get(
+    "SELECT counter_id FROM join_tokens WHERE token = ?",
+    [joinId],
+    (err, row) => {
+      if (err) return handleError(res, 500, err.message);
+      if (!row) return handleError(res, 404, "Invalid join ID");
 
-    db.get(
-      "SELECT counter_id FROM join_tokens WHERE token = ?",
-      [joinId],
-      (err, row) => {
-        if (err) return handleError(res, 500, err.message);
-        if (!row) return handleError(res, 404, "Invalid join ID");
+      db.get(
+        "SELECT * FROM user_counters WHERE user_id = ? AND counter_id = ?",
+        [userId, row.counter_id],
+        (err, existingRow) => {
+          if (err) return handleError(res, 500, err.message);
+          if (existingRow) {
+            return res.json({
+              success: true,
+              message: "Already joined to this counter",
+            });
+          }
 
-        db.get(
-          "SELECT * FROM user_counters WHERE user_id = ? AND counter_id = ?",
-          [user.id, row.counter_id],
-          (err, existingRow) => {
-            if (err) return handleError(res, 500, err.message);
-            if (existingRow) {
-              return res.json({
-                success: true,
-                message: "Already joined to this counter",
-              });
-            }
+          db.run(
+            "INSERT INTO user_counters (user_id, counter_id) VALUES (?, ?)",
+            [userId, row.counter_id],
+            (err) => {
+              if (err) return handleError(res, 500, err.message);
 
-            db.run(
-              "INSERT INTO user_counters (user_id, counter_id) VALUES (?, ?)",
-              [user.id, row.counter_id],
-              (err) => {
-                if (err) return handleError(res, 500, err.message);
-
-                db.get(
-                  "SELECT id, name, value, DATE(created_at) as created_at FROM counters WHERE id = ?",
-                  [row.counter_id],
-                  (err, counter) => {
-                    if (err) return handleError(res, 500, err.message);
-                    res.json({
-                      success: true,
-                      message: "Successfully joined counter",
-                      counter,
-                    });
-                  },
-                );
-              },
-            );
-          },
-        );
-      },
-    );
-  });
+              db.get(
+                "SELECT id, name, value, DATE(created_at) as created_at FROM counters WHERE id = ?",
+                [row.counter_id],
+                (err, counter) => {
+                  if (err) return handleError(res, 500, err.message);
+                  res.json({
+                    success: true,
+                    message: "Successfully joined counter",
+                    counter,
+                  });
+                },
+              );
+            },
+          );
+        },
+      );
+    },
+  );
 });
 
 app.get("/counters", (req, res) => {
