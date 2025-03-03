@@ -26,3 +26,46 @@ div#shareCounterModal(class="fixed inset-0 bg-black bg-opacity-50 z-40 flex item
         div(class="flex justify-end gap-3")
             button#closeShareModalBtn(class="bg-red-500 hover:bg-red-700 text-white py-2 px-4 rounded w-full transition-colors") Cancel
             button#copyShareLinkBtn(class="bg-blue-500 hover:bg-blue-700 text-white py-2 px-4 rounded w-full transition-colors hidden") Copy Link
+
+div#authModal(class="fixed inset-0 bg-black bg-opacity-50 z-40 flex items-center justify-center hidden")
+    div(class="bg-white border border-[#313131] shadow-lg p-6 w-full max-w-md mx-4 rounded-lg")
+        h3#authModalTitle(class="font-bold mb-4") Login
+        
+        div#authError(class="hidden mb-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded")
+        
+        form#authForm(class="space-y-4")
+            div
+                label(for="username" class="block text-sm font-medium text-gray-700") Username
+                input#username(
+                    class="mt-1 w-full p-2 border border-amber-200 bg-amber-50 text-black rounded-md"
+                    type="text"
+                    name="username"
+                    placeholder="Enter username"
+                    required
+                )
+            
+            div
+                label(for="password" class="block text-sm font-medium text-gray-700") Password
+                input#password(
+                    class="mt-1 w-full p-2 border border-amber-200 bg-amber-50 text-black rounded-md"
+                    type="password"
+                    name="password"
+                    placeholder="Enter password"
+                    required
+                )
+            
+            div(class="flex justify-end gap-3")
+                button#closeAuthModalBtn(
+                    type="button"
+                    class="bg-red-500 hover:bg-red-700 text-white py-2 px-4 rounded w-full transition-colors"
+                ) Cancel
+                button#submitAuthBtn(
+                    type="submit"
+                    class="bg-blue-500 hover:bg-blue-700 text-white py-2 px-4 rounded w-full transition-colors"
+                ) Login
+            
+            div(class="text-center mt-4")
+                button#toggleAuthModeBtn(
+                    type="button"
+                    class="text-blue-600 hover:text-blue-800 text-sm"
+                ) Don't have an account? Register
