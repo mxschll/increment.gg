@@ -110,7 +110,8 @@ const setAuthCookie = (res, token) => {
   res.cookie("token", token, {
     maxAge: 2147483647,
     httpOnly: true,
-    sameSite: "strict",
+    sameSite: "none",
+    secure: true,
     path: "/",
   });
 };
