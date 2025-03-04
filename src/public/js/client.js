@@ -120,20 +120,6 @@
       });
   }
 
-  // Listen for registration complete event
-  window.addEventListener(window.REGISTRATION_COMPLETE_EVENT, () => {
-    // If we're on the private page, fetch counters again
-    if (isPrivatePage) {
-      fetchCounters();
-
-      // If using sockets, reconnect
-      if (socket) {
-        socket.disconnect();
-        socket.connect();
-      }
-    }
-  });
-
   // Function to handle fetch errors and suppress 401 errors in console
   function handleFetchError(error, operation) {
     // Suppress 401 errors in the console
