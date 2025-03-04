@@ -65,59 +65,12 @@
 
   // Function to fetch counters (public or private based on page type)
   function fetchCounters() {
-    const endpoint = isPrivatePage ? "/counters/private" : "/counters";
-    loadCounters(endpoint);
-  }
-
-  function loadCounters(endpoint) {
-    fetch(endpoint, {
-      method: "GET",
-      headers: getHeaders(),
-    })
-      .then((response) => {
-        if (!response.ok) {
-          if (response.status === 401 && isPrivatePage) {
-            counters_list.innerHTML =
-              '<li class="py-3 text-yellow-400">Authenticating...</li>';
-          }
-          throw new Error(`Failed to fetch counters: ${response.status}`);
-        }
-        return response.json();
-      })
-      .then((data) => {
-        const counters = data.counters || data;
-
-        // If the list only contains an error/status message, clear it
-        if (
-          counters_list.children.length === 1 &&
-          (counters_list.children[0].classList.contains("text-yellow-400") ||
-            counters_list.children[0].classList.contains("text-red-400"))
-        ) {
-          counters_list.innerHTML = "";
-        }
-
-        counters.forEach((counter) => {
-          const existingCounter = document.getElementById(counter.id);
-          if (existingCounter) {
-            // Update existing counter value
-            const valueSpan = existingCounter.querySelector(".value");
-            if (valueSpan) {
-              valueSpan.textContent = ` ${counter.value}`;
-            }
-          } else {
-            // Add new counter to the list
-            addCounterItem(counter.id, counter.name, counter.value);
-          }
-        });
-      })
-      .catch((error) => {
-        console.error("Error fetching counters:", error);
-        // Only show error if list is empty
-        if (!counters_list.children.length) {
-          counters_list.innerHTML =
-            '<li class="py-3 text-red-400">Failed to load counters. Please check your authentication.</li>';
-        }
-      });
+    // Re-subscribe to appropriate room to get latest counter states
+    if (isPrivatePage) {
+      socket.emit("subscribe", "private");
+    } else {
+      socket.emit("subscribe", "public");
+    }
   }
 
   // Function to handle fetch errors and suppress 401 errors in console
@@ -337,7 +290,15 @@
 
   // Set up event handlers based on page type
   if (isPrivatePage) {
-    fetchCounters();
+    // Handle initial counter sync for private counters
+    socket.on("private:counters:sync", (counters) => {
+      // Clear existing counters
+      counters_list.innerHTML = "";
+      // Add all counters
+      counters.forEach((counter) => {
+        addCounterItem(counter.id, counter.name, counter.value);
+      });
+    });
 
     // Handle updates to private counters
     socket.on("private:update", (counter) => {
@@ -354,8 +315,15 @@
       addCounterItem(counter.id, counter.name, counter.value);
     });
   } else {
-    // Load public counters
-    fetchCounters();
+    // Handle initial counter sync for public counters
+    socket.on("counters:sync", (counters) => {
+      // Clear existing counters
+      counters_list.innerHTML = "";
+      // Add all counters
+      counters.forEach((counter) => {
+        addCounterItem(counter.id, counter.name, counter.value);
+      });
+    });
 
     // Handle updates to public counters
     socket.on("update", (counter) => {

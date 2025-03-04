@@ -644,7 +644,42 @@ io.on("connection", (socket) => {
     if (token) authenticateSocket(token);
   }
 
-  socket.on("subscribe", (room) => socket.join(room));
+  socket.on("subscribe", (room) => {
+    socket.join(room);
+    
+    // Send counter states based on room type
+    if (room === "public") {
+      // Send public counters
+      db.all(
+        `SELECT id, name, value, DATE(created_at) as created_at 
+         FROM counters 
+         WHERE public = 1
+         ${getOrderClause()}`,
+        [],
+        (err, counters) => {
+          if (!err && counters) {
+            socket.emit("counters:sync", counters);
+          }
+        }
+      );
+    } else if (room === "private" && socket.userId) {
+      // Send private counters for authenticated user
+      db.all(
+        `SELECT c.id, c.name, c.value, DATE(c.created_at) as created_at 
+         FROM counters c
+         JOIN user_counters uc ON c.id = uc.counter_id
+         WHERE uc.user_id = ? AND c.public = 0
+         ${getOrderClause()}`,
+        [socket.userId],
+        (err, counters) => {
+          if (!err && counters) {
+            socket.emit("private:counters:sync", counters);
+          }
+        }
+      );
+    }
+  });
+  
   socket.on("unsubscribe", (room) => socket.leave(room));
 });
 
