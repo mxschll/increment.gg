@@ -69,13 +69,13 @@ db.serialize(() => {
   `);
 });
 
-// Add periodic cleanup of old join tokens
+// Periodic cleanup of old join tokens
 const cleanupOldJoinTokens = () => {
-  const expirationHours = 1; // Tokens expire after 1 hour
+  const expirationDays = 7; // Tokens expire after 7 days
   console.log("Cleaning up old join tokens...");
   db.run(
     "DELETE FROM join_tokens WHERE datetime(created_at) < datetime('now', ?)",
-    [`-${expirationHours} hours`],
+    [`-${expirationDays} days`],
     function(err) {
       if (err) {
         console.error("Failed to clean up old join tokens:", err);
@@ -86,8 +86,8 @@ const cleanupOldJoinTokens = () => {
   );
 };
 
-// Run cleanup every hour
-setInterval(cleanupOldJoinTokens, 60 * 60 * 1000);
+// Run cleanup every day
+setInterval(cleanupOldJoinTokens, 24 * 60 * 60 * 1000);
 cleanupOldJoinTokens();
 
 // ===== Helper Functions =====
