@@ -76,13 +76,13 @@ const cleanupOldJoinTokens = () => {
   db.run(
     "DELETE FROM join_tokens WHERE datetime(created_at) < datetime('now', ?)",
     [`-${expirationDays} days`],
-    function(err) {
+    function (err) {
       if (err) {
         console.error("Failed to clean up old join tokens:", err);
       } else if (this.changes > 0) {
         console.log(`Removed ${this.changes} expired join tokens`);
       }
-    }
+    },
   );
 };
 
@@ -146,13 +146,13 @@ const generateJoinToken = (counterName) => {
   // Create a slug from the counter name
   const slug = counterName
     .toLowerCase()
-    .replace(/[^\w\s-]/g, '') // Remove non-word chars except spaces and hyphens
-    .replace(/\s+/g, '-')     // Replace spaces with hyphens
-    .substring(0, 20);        // Limit length
-  
+    .replace(/[^\w\s-]/g, "") // Remove non-word chars except spaces and hyphens
+    .replace(/\s+/g, "-") // Replace spaces with hyphens
+    .substring(0, 20); // Limit length
+
   // Generate a 4-digit code
   const code = Math.floor(1000 + Math.random() * 9000);
-  
+
   return `${slug}-${code}`;
 };
 
@@ -176,15 +176,15 @@ const associateCountersWithUser = (userId, callback) => {
     [userId],
     (err, counters) => {
       if (err) return callback(err);
-      
+
       if (!counters || counters.length === 0) return callback(null);
-      
-      const values = counters.map(c => `('${userId}', '${c.id}')`).join(',');
+
+      const values = counters.map((c) => `('${userId}', '${c.id}')`).join(",");
       db.run(
         `INSERT OR IGNORE INTO user_counters (user_id, counter_id) VALUES ${values}`,
-        callback
+        callback,
       );
-    }
+    },
   );
 };
 
@@ -260,15 +260,15 @@ app.set("view engine", "pug");
 // ===== Authentication Routes =====
 app.post("/auth/register", async (req, res) => {
   const { username, password } = req.body;
-  
+
   if (!username || !password) {
     return handleError(res, 400, "Username and password are required");
   }
-  
+
   if (!USERNAME_REGEX.test(username)) {
     return handleError(res, 400, "Invalid username format");
   }
-  
+
   if (password.length < 6) {
     return handleError(res, 400, "Password must be at least 6 characters");
   }
@@ -276,24 +276,24 @@ app.post("/auth/register", async (req, res) => {
   try {
     const passwordHash = await hashPassword(password);
     const userId = req.userId; // Use existing auto-registered ID
-    
+
     db.run(
       "UPDATE users SET username = ?, password_hash = ? WHERE id = ?",
       [username, passwordHash, userId],
-      function(err) {
+      function (err) {
         if (err) {
           if (err.message.includes("UNIQUE")) {
             return handleError(res, 409, "Username already taken");
           }
           return handleError(res, 500, "Failed to register user");
         }
-        
+
         // Associate any existing counters with the user
         associateCountersWithUser(userId, (err) => {
           if (err) console.error("Failed to associate counters:", err);
           res.json({ success: true });
         });
-      }
+      },
     );
   } catch (err) {
     return handleError(res, 500, "Failed to hash password");
@@ -302,7 +302,7 @@ app.post("/auth/register", async (req, res) => {
 
 app.post("/auth/login", async (req, res) => {
   const { username, password } = req.body;
-  
+
   if (!username || !password) {
     return handleError(res, 400, "Username and password are required");
   }
@@ -319,7 +319,7 @@ app.post("/auth/login", async (req, res) => {
 
       // Set the auth cookie with the user's token
       setAuthCookie(res, user.token);
-      
+
       // Associate any counters from the current session with the logged-in account
       if (req.userId !== user.id) {
         associateCountersWithUser(req.userId, (err) => {
@@ -342,7 +342,7 @@ app.post("/auth/logout", (req, res) => {
   // Generate a new anonymous user
   const userId = generateId();
   const token = generateId();
-  
+
   db.run(
     "INSERT INTO users (id, token) VALUES (?, ?)",
     [userId, token],
@@ -351,7 +351,7 @@ app.post("/auth/logout", (req, res) => {
       setAuthCookie(res, token);
       req.userId = userId;
       res.json({ success: true });
-    }
+    },
   );
 });
 
@@ -368,9 +368,9 @@ app.get("/auth/status", (req, res) => {
       if (err) return handleError(res, 500, "Internal server error");
       res.json({
         authenticated: !!user.username,
-        username: user.username
+        username: user.username,
       });
-    }
+    },
   );
 });
 
@@ -390,16 +390,33 @@ app.get("/private", (req, res) => {
     return res.render("private", { counters: [], path: req.path });
   }
 
-  db.all(
-    `SELECT c.id, c.name, c.value, DATE(c.created_at) as created_at 
-     FROM counters c
-     JOIN user_counters uc ON c.id = uc.counter_id
-     WHERE uc.user_id = ? AND c.public = 0
-     ${getOrderClause()}`,
+  // Get the username for the authenticated user
+  db.get(
+    "SELECT username FROM users WHERE id = ?",
     [req.userId],
-    (err, rows) => {
-      if (err) return handleError(res, 500, "Internal server error");
-      res.render("private", { counters: rows, path: req.path });
+    (err, user) => {
+      if (err) {
+        console.error("Error fetching user:", err);
+        return res.render("private", { counters: [], path: req.path });
+      }
+
+      // Fetch the user's private counters
+      db.all(
+        `SELECT c.id, c.name, c.value, DATE(c.created_at) as created_at 
+         FROM counters c
+         JOIN user_counters uc ON c.id = uc.counter_id
+         WHERE uc.user_id = ? AND c.public = 0
+         ${getOrderClause()}`,
+        [req.userId],
+        (err, rows) => {
+          if (err) return handleError(res, 500, "Internal server error");
+          res.render("private", {
+            counters: rows,
+            path: req.path,
+            username: user ? user.username : null,
+          });
+        },
+      );
     },
   );
 });
@@ -407,7 +424,8 @@ app.get("/private", (req, res) => {
 // ===== API Routes =====
 app.get("/join/:joinId", (req, res) => {
   const { joinId } = req.params;
-  if (!joinId || !joinId.includes('-')) { // Check for valid format instead of fixed length
+  if (!joinId || !joinId.includes("-")) {
+    // Check for valid format instead of fixed length
     return res.render("private", {
       error: "Invalid join link",
       path: req.path,
@@ -415,69 +433,94 @@ app.get("/join/:joinId", (req, res) => {
     });
   }
 
-  // First verify the join token is valid
-  db.get(
-    "SELECT counter_id FROM join_tokens WHERE token = ?",
-    [joinId],
-    (err, row) => {
-      if (err) {
-        return res.render("private", {
-          joinId,
-          path: req.path,
-          counters: [],
-          error: "Database error",
-        });
-      }
+  // If user is authenticated, get their username
+  const getUserAndContinue = (callback) => {
+    if (!req.userId) {
+      return callback(null);
+    }
 
-      if (!row) {
-        return res.render("private", {
-          joinId,
-          path: req.path,
-          counters: [],
-          error: "Invalid join token",
-        });
-      }
+    db.get(
+      "SELECT username FROM users WHERE id = ?",
+      [req.userId],
+      (err, user) => {
+        if (err) {
+          console.error("Error fetching user:", err);
+          return callback(null);
+        }
+        return callback(user ? user.username : null);
+      },
+    );
+  };
 
-      const counterId = row.counter_id;
+  getUserAndContinue((username) => {
+    // First verify the join token is valid
+    db.get(
+      "SELECT counter_id FROM join_tokens WHERE token = ?",
+      [joinId],
+      (err, row) => {
+        if (err) {
+          return res.render("private", {
+            joinId,
+            path: req.path,
+            counters: [],
+            error: "Database error",
+            username,
+          });
+        }
 
-      // Check if the user is already joined to this counter
-      db.get(
-        "SELECT * FROM user_counters WHERE user_id = ? AND counter_id = ?",
-        [req.userId, counterId],
-        (err, existingRow) => {
-          if (err) {
-            return res.render("private", {
-              joinId,
-              path: req.path,
-              counters: [],
-              error: "Database error",
-            });
-          }
+        if (!row) {
+          return res.render("private", {
+            joinId,
+            path: req.path,
+            counters: [],
+            error: "Invalid join token",
+            username,
+          });
+        }
 
-          if (existingRow) {
-            return res.redirect("/private");
-          }
+        const counterId = row.counter_id;
 
-          // Join the counter to the user's account
-          db.run(
-            "INSERT INTO user_counters (user_id, counter_id) VALUES (?, ?)",
-            [req.userId, counterId],
-            (err) => {
-              if (err) {
-                return res.render("private", {
-                  joinId,
-                  path: req.path,
-                  counters: [],
-                  error: "Failed to join counter",
-                });
-              }
-              res.redirect("/private");
-            },
-          );
-        },
-      );
-    },
-  );
+        // Check if the user is already joined to this counter
+        db.get(
+          "SELECT * FROM user_counters WHERE user_id = ? AND counter_id = ?",
+          [req.userId, counterId],
+          (err, existingRow) => {
+            if (err) {
+              return res.render("private", {
+                joinId,
+                path: req.path,
+                counters: [],
+                error: "Database error",
+                username,
+              });
+            }
+
+            if (existingRow) {
+              return res.redirect("/private");
+            }
+
+            // Join the counter to the user's account
+            db.run(
+              "INSERT INTO user_counters (user_id, counter_id) VALUES (?, ?)",
+              [req.userId, counterId],
+              (err) => {
+                if (err) {
+                  return res.render("private", {
+                    joinId,
+                    path: req.path,
+                    counters: [],
+                    error: "Failed to join counter",
+                    username,
+                  });
+                }
+                res.redirect("/private");
+              },
+            );
+          },
+        );
+      },
+    );
+  });
 });
 
 app.post("/counters", (req, res) => {
@@ -646,7 +689,7 @@ io.on("connection", (socket) => {
 
   socket.on("subscribe", (room) => {
     socket.join(room);
-    
+
     // Send counter states based on room type
     if (room === "public") {
       // Send public counters
@@ -660,7 +703,7 @@ io.on("connection", (socket) => {
           if (!err && counters) {
             socket.emit("counters:sync", counters);
           }
-        }
+        },
       );
     } else if (room === "private" && socket.userId) {
       // Send private counters for authenticated user
@@ -675,11 +718,11 @@ io.on("connection", (socket) => {
           if (!err && counters) {
             socket.emit("private:counters:sync", counters);
           }
-        }
+        },
       );
     }
   });
-  
+
   socket.on("unsubscribe", (room) => socket.leave(room));
 });
 
