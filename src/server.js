@@ -12,6 +12,7 @@ const ratelimit = require("express-rate-limit");
 const slowdown = require("express-slow-down");
 const cookieParser = require("cookie-parser");
 const bcrypt = require("bcrypt");
+const compression = require("compression");
 
 // ===== Configuration =====
 const PORT = process.env.PORT || 3000;
@@ -189,12 +190,22 @@ const associateCountersWithUser = (userId, callback) => {
 };
 
 // ===== Express Configuration =====
+app.use(compression());
+app.use(minify());
 app.use(speed_limiter);
 app.use(rate_limiter);
-app.use(minify());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
-app.use(express.static(path.join(__dirname, "public")));
+
+const cacheTime = 86400000 * 7; // 7 days
+app.use(
+  express.static(path.join(__dirname, "public"), {
+    maxAge: cacheTime,
+    etag: true,
+    lastModified: true,
+  })
+);
+
 app.use(cookieParser());
 
 // ===== Authentication Middleware =====
