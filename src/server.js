@@ -660,19 +660,39 @@ app.get("/counters/private", (req, res) => {
 app.post("/counters/:id/increment", (req, res) => {
   const { id } = req.params;
 
-  db.run("UPDATE counters SET value = value + 1 WHERE id = ?", [id], (err) => {
-    if (err) return handleError(res, 500, err.message);
+  // First check if the counter is public or if the user has access to it
+  db.get(
+    `SELECT c.id, c.name, c.value, c.public, DATE(c.created_at) as created_at 
+     FROM counters c 
+     WHERE c.id = ? AND (
+       c.public = 1 OR 
+       (c.public = 0 AND ? IS NOT NULL AND EXISTS (
+         SELECT 1 FROM user_counters uc 
+         WHERE uc.counter_id = c.id AND uc.user_id = ?
+       ))
+     )`,
+    [id, req.userId, req.userId],
+    (err, counter) => {
+      if (err) return handleError(res, 500, err.message);
+      if (!counter) return handleError(res, 403, "You don't have access to this counter");
 
-    db.get(
-      "SELECT id, name, value, public, DATE(created_at) as created_at FROM counters WHERE id = ?",
-      [id],
-      (err, counter) => {
+      // Proceed with incrementing the counter
+      db.run("UPDATE counters SET value = value + 1 WHERE id = ?", [id], (err) => {
         if (err) return handleError(res, 500, err.message);
-        res.json({ id, name: counter.name, value: counter.value });
-        emitCounterUpdate(counter, counter.public);
-      },
-    );
-  });
+
+        // Get the updated counter value
+        db.get(
+          "SELECT id, name, value, public, DATE(created_at) as created_at FROM counters WHERE id = ?",
+          [id],
+          (err, updatedCounter) => {
+            if (err) return handleError(res, 500, err.message);
+            res.json({ id, name: updatedCounter.name, value: updatedCounter.value });
+            emitCounterUpdate(updatedCounter, updatedCounter.public);
+          }
+        );
+      });
+    }
+  );
 });
 
 // ===== Socket.IO Setup =====
