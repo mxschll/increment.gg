@@ -23,7 +23,7 @@ const SALT_ROUNDS = 10;
 // ===== Middleware Configuration =====
 const rate_limiter = ratelimit({
   windowMs: 60 * 1000,
-  limit: 120,
+  limit: 10,
   standardHeaders: true,
   legacyHeaders: false,
 });
@@ -203,7 +203,7 @@ app.use(
     maxAge: cacheTime,
     etag: true,
     lastModified: true,
-  })
+  }),
 );
 
 app.use(cookieParser());
